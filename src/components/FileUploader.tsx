@@ -9,17 +9,15 @@ import { apiUrl } from "@/config/site";
 
 export default function FileUploader() {
   const uploadRef = useRef(null);
+  const uploaderRef = useRef(null);
   const [selectedFile, setSelectedFile] = useState(null);
-  const [status, setStatus] = useState("");
   const [progress, setProgress] = useState(0);
-  let uploader;
 
   const handleUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
 
     if (files) {
       const file = files[0];
-      console.log(file);
       setSelectedFile(file);
     }
   };
@@ -35,36 +33,29 @@ export default function FileUploader() {
     }
   };
 
-  async function handleFileUpload(file) {
+  const handleFileUpload = (file) => {
     if (file) {
       const uploaderOptions = {
         file: file,
         baseURL: apiUrl,
-        chunkSize: 10,
-        threadsQuantity: 10,
+        chunkSize: 15,
+        threadsQuantity: 15,
       };
 
       let percentage = 0;
-      // setPgvalue(0);
-      // setPerf("-");
-      uploader = new Uploader(uploaderOptions);
-      const tBegin = performance.now();
+      const uploader = new Uploader(uploaderOptions);
+      uploaderRef.current = uploader;
       uploader
         .onProgress(({ percentage: newPercentage }) => {
           // to avoid the same percentage to be logged twice
           console.log(`${newPercentage}%`);
-          if (percentage === 100) {
-            // setPerf((performance.now() - tBegin) / 1000);
-          }
           if (newPercentage !== percentage) {
             percentage = newPercentage;
             setProgress(percentage);
-            // setPgvalue(percentage);
           }
         })
         .onError((error) => {
           console.error(error);
-          // setSelectedFile(null);
           setProgress(0);
         })
         .onComplete(({ data }) => {
@@ -75,15 +66,15 @@ export default function FileUploader() {
 
       uploader.start();
     }
-  }
+  };
 
-  function handleCancelButton() {
-    if (uploader) {
-      uploader.abort();
+  const handleCancelButton = () => {
+    if (uploaderRef.current) {
+      uploaderRef.current.abort();
+      setSelectedFile(null);
+      setProgress(0);
     }
-    setSelectedFile(null);
-    setProgress(0);
-  }
+  };
 
   return (
     <div className="flex gap-3">

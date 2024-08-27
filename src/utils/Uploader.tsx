@@ -6,6 +6,7 @@ const api = axios.create({
 });
 
 // original source: https://github.com/pilovm/multithreaded-uploader/blob/master/frontend/uploader.js
+
 export class Uploader {
   constructor(options) {
     options.chunkSize = options.chunkSize || 0;
@@ -28,10 +29,13 @@ export class Uploader {
     this.onProgressFn = () => {};
     this.onErrorFn = () => {};
     this.onCompleteFn = () => {};
+    this.onAbortFn = () => {};
+    this.abort = this.abort.bind(this);
     this.baseURL = options.baseURL;
   }
 
   start() {
+    if (this.aborted) return; // Verifica si la operación ha sido cancelada
     this.initialize();
   }
 
@@ -82,6 +86,8 @@ export class Uploader {
   }
 
   sendNext(retry = 0) {
+    if (this.aborted) return; // Verifica si la operación ha sido cancelada
+
     const activeConnections = Object.keys(this.activeConnections).length;
 
     if (activeConnections >= this.threadsQuantity) {
@@ -102,15 +108,19 @@ export class Uploader {
       const chunk = this.file.slice(sentSize, sentSize + this.chunkSize);
 
       const sendChunkStarted = () => {
+        if (this.aborted) return; // Verifica si la operación ha sido cancelada
         this.sendNext();
       };
 
       this.sendChunk(chunk, part, sendChunkStarted)
         .then(() => {
-          this.sendNext();
+          if (!this.aborted) {
+            // Verifica si la operación no ha sido cancelada
+            this.sendNext();
+          }
         })
         .catch((error) => {
-          if (retry <= 6) {
+          if (!this.aborted && retry <= 6) {
             retry++;
             const wait = (ms) => new Promise((res) => setTimeout(res, ms));
             //exponential backoff retry before giving up
@@ -130,12 +140,7 @@ export class Uploader {
   }
 
   async complete(error) {
-    if (error && !this.aborted) {
-      this.onErrorFn(error);
-      return;
-    }
-
-    if (error) {
+    if (error || !this.aborted) {
       this.onErrorFn(error);
       return;
     }
@@ -165,7 +170,9 @@ export class Uploader {
 
         this.onCompleteFn({ data });
       } catch (error) {
-        throw new Error(error, "Failed to complete upload");
+        this.onErrorFn(
+          new Error("Failed to complete upload: " + error.message)
+        );
       }
     }
   }
@@ -175,11 +182,12 @@ export class Uploader {
       this.upload(chunk, part, sendChunkStarted)
         .then((status) => {
           if (status !== 200) {
-            reject(new Error("Failed chunk upload"));
-            return;
+            return reject(
+              new Error(`Failed chunk upload with status ${status}`)
+            );
           }
 
-          resolve();
+          return resolve(true);
         })
         .catch((error) => {
           reject(error);
@@ -298,13 +306,25 @@ export class Uploader {
     return this;
   }
 
-  abort() {
-    Object.keys(this.activeConnections)
-      .map(Number)
-      .forEach((id) => {
-        this.activeConnections[id].abort();
-      });
+  onAbort(onAbort) {
+    this.onAbortFn = onAbort;
+    return this;
+  }
 
+  abort() {
+    // Abortar todas las conexiones activas
+    Object.keys(this.activeConnections).forEach((partNumber) => {
+      this.activeConnections[partNumber].abort();
+      delete this.activeConnections[partNumber];
+    });
+
+    // Limpiar el estado
+    this.parts = [];
+    this.uploadedParts = [];
     this.aborted = true;
+
+    // Llamar a la función de error con un mensaje personalizado
+    this.onErrorFn(new Error("All uploads have been cancelled."));
+    return;
   }
 }
