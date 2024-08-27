@@ -1,10 +1,18 @@
-import React, { useRef } from "react";
+import React, { useRef, useState } from "react";
 import { Button } from "@nextui-org/button";
+import { Progress } from "@nextui-org/progress";
 import { Snippet } from "@nextui-org/snippet";
 import { button as buttonStyles } from "@nextui-org/theme";
+import formatBytes from "@/utils/formatBytes";
+import { Uploader } from "@/utils/Uploader";
+import { apiUrl } from "@/config/site";
 
 export default function FileUploader() {
   const uploadRef = useRef(null);
+  const [selectedFile, setSelectedFile] = useState(null);
+  const [status, setStatus] = useState("");
+  const [progress, setProgress] = useState(0);
+  let uploader;
 
   const handleUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -12,6 +20,7 @@ export default function FileUploader() {
     if (files) {
       const file = files[0];
       console.log(file);
+      setSelectedFile(file);
     }
   };
 
@@ -19,33 +28,129 @@ export default function FileUploader() {
     e.preventDefault();
     if (!uploadRef || !uploadRef.current) return;
 
-    uploadRef.current.click();
+    if (selectedFile) {
+      handleFileUpload(selectedFile);
+    } else {
+      uploadRef.current.click();
+    }
   };
+
+  async function handleFileUpload(file) {
+    if (file) {
+      const uploaderOptions = {
+        file: file,
+        baseURL: apiUrl,
+        chunkSize: 10,
+        threadsQuantity: 10,
+      };
+
+      let percentage = 0;
+      // setPgvalue(0);
+      // setPerf("-");
+      uploader = new Uploader(uploaderOptions);
+      const tBegin = performance.now();
+      uploader
+        .onProgress(({ percentage: newPercentage }) => {
+          // to avoid the same percentage to be logged twice
+          console.log(`${newPercentage}%`);
+          if (percentage === 100) {
+            // setPerf((performance.now() - tBegin) / 1000);
+          }
+          if (newPercentage !== percentage) {
+            percentage = newPercentage;
+            setProgress(percentage);
+            // setPgvalue(percentage);
+          }
+        })
+        .onError((error) => {
+          console.error(error);
+          // setSelectedFile(null);
+          setProgress(0);
+        })
+        .onComplete(({ data }) => {
+          console.log(data.location);
+          setSelectedFile(null);
+          setProgress(0);
+        });
+
+      uploader.start();
+    }
+  }
+
+  function handleCancelButton() {
+    if (uploader) {
+      uploader.abort();
+    }
+    setSelectedFile(null);
+    setProgress(0);
+  }
 
   return (
     <div className="flex gap-3">
       <Snippet hideCopyButton hideSymbol variant="bordered">
-        <span>
-          Haz click aqui para{" "}
-          <Button
-            onClick={handleButtonClick}
-            className={buttonStyles({
-              color: "primary",
-              radius: "full",
-              variant: "shadow",
-            })}
-            color="primary"
-          >
-            elegir archivo
-          </Button>
-        </span>
+        {progress <= 0 ? (
+          <span className="space-x-2">
+            {selectedFile
+              ? `[${formatBytes(selectedFile.size)}] ${selectedFile.name}  `
+              : "Haz click aqui para "}
+            <Button
+              onClick={handleButtonClick}
+              className={buttonStyles({
+                color: "primary",
+                radius: "full",
+                variant: "shadow",
+              })}
+              color="primary"
+            >
+              {selectedFile ? `Subir archivo` : "elegir archivo"}
+            </Button>
+            {selectedFile && (
+              <Button
+                onClick={handleCancelButton}
+                className={buttonStyles({
+                  color: "default",
+                  radius: "full",
+                  variant: "shadow",
+                })}
+                color="primary"
+              >
+                Cancelar
+              </Button>
+            )}
+            <input
+              className="hidden"
+              ref={uploadRef}
+              type="file"
+              onChange={handleUpload}
+            />
+          </span>
+        ) : (
+          <span className="flex gap-3 space-x-4">
+            <Progress
+              label="Subiendo... "
+              size="md"
+              value={progress}
+              maxValue={100}
+              color="primary"
+              formatOptions={{ style: "percent", percent: "%" }}
+              showValueLabel={true}
+              className="max-w-md"
+            />
+            <br />
+            <Button
+              onClick={handleCancelButton}
+              className={buttonStyles({
+                color: "primary",
+                radius: "full",
+                variant: "shadow",
+              })}
+              color="primary"
+            >
+              Cancelar
+            </Button>
+          </span>
+        )}
       </Snippet>
-      <input
-        className="hidden"
-        ref={uploadRef}
-        type="file"
-        onChange={handleUpload}
-      />
     </div>
   );
 }

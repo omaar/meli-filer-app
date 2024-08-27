@@ -1,8 +1,10 @@
 export type SiteConfig = typeof siteConfig;
 
+export const apiUrl = import.meta.env.VITE_API_URL;
+
 export const siteConfig = {
-  name: "Vite + NextUI",
-  description: "Make beautiful websites regardless of your design experience.",
+  name: "File Uploader",
+  description: "Upload big files fast and easy",
   navItems: [
     {
       label: "Subir",
