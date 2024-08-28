@@ -1,6 +1,7 @@
 export type SiteConfig = typeof siteConfig;
 
 export const apiUrl = import.meta.env.VITE_API_URL;
+export const reCaptchaSiteKey = import.meta.env.VITE_RECAPTCHA_SITE_KEY;
 
 export const siteConfig = {
   name: "File Uploader",

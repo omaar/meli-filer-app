@@ -1,17 +1,29 @@
-import React, { useRef, useState } from "react";
+import React, { useRef, useState, useCallback, useEffect } from "react";
 import { Button } from "@nextui-org/button";
 import { Progress } from "@nextui-org/progress";
 import { Snippet } from "@nextui-org/snippet";
 import { button as buttonStyles } from "@nextui-org/theme";
 import formatBytes from "@/utils/formatBytes";
 import { Uploader } from "@/utils/Uploader";
-import { apiUrl } from "@/config/site";
+import { apiUrl, reCaptchaSiteKey } from "@/config/site";
+
+import {
+  GoogleReCaptchaProvider,
+  useGoogleReCaptcha,
+} from "react-google-recaptcha-v3";
 
 export default function FileUploader() {
   const uploadRef = useRef(null);
   const uploaderRef = useRef(null);
   const [selectedFile, setSelectedFile] = useState(null);
   const [progress, setProgress] = useState(0);
+
+  const [tokens, setTokens] = useState({ token1: "", token2: "", token3: "" });
+  const [refreshTokens, setRefreshTokens] = useState(false);
+  const handleTokens = (token1, token2, token3) => {
+    setTokens({ token1, token2, token3 });
+    console.log("Tokens received:", token1, token2, token3);
+  };
 
   const handleUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -27,19 +39,21 @@ export default function FileUploader() {
     if (!uploadRef || !uploadRef.current) return;
 
     if (selectedFile) {
+      setRefreshTokens(!refreshTokens);
       handleFileUpload(selectedFile);
     } else {
       uploadRef.current.click();
     }
   };
 
-  const handleFileUpload = (file) => {
+  const handleFileUpload = async (file) => {
     if (file) {
       const uploaderOptions = {
         file: file,
         baseURL: apiUrl,
-        chunkSize: 15,
-        threadsQuantity: 15,
+        chunkSize: 5,
+        threadsQuantity: 10,
+        recaptchaTokens: tokens,
       };
 
       let percentage = 0;
@@ -48,7 +62,7 @@ export default function FileUploader() {
       uploader
         .onProgress(({ percentage: newPercentage }) => {
           // to avoid the same percentage to be logged twice
-          console.log(`${newPercentage}%`);
+          // console.log(`${newPercentage}%`);
           if (newPercentage !== percentage) {
             percentage = newPercentage;
             setProgress(percentage);
@@ -57,13 +71,14 @@ export default function FileUploader() {
         .onError((error) => {
           console.error(error);
           setProgress(0);
+          setRefreshTokens(!refreshTokens);
         })
         .onComplete(({ data }) => {
           console.log(data.location);
           setSelectedFile(null);
           setProgress(0);
+          setRefreshTokens(!refreshTokens);
         });
-
       uploader.start();
     }
   };
@@ -71,14 +86,21 @@ export default function FileUploader() {
   const handleCancelButton = () => {
     if (uploaderRef.current) {
       uploaderRef.current.abort();
-      setSelectedFile(null);
-      setProgress(0);
     }
+    setSelectedFile(null);
+    setProgress(0);
+    setRefreshTokens(!refreshTokens);
   };
 
   return (
     <div className="flex gap-3">
       <Snippet hideCopyButton hideSymbol variant="bordered">
+        <GoogleReCaptchaProvider reCaptchaKey={reCaptchaSiteKey}>
+          <CaptchaComponent
+            onTokensGenerated={handleTokens}
+            refreshTokens={refreshTokens}
+          />
+        </GoogleReCaptchaProvider>
         {progress <= 0 ? (
           <span className="space-x-2">
             {selectedFile
@@ -145,3 +167,34 @@ export default function FileUploader() {
     </div>
   );
 }
+
+const CaptchaComponent = ({ onTokensGenerated, refreshTokens }) => {
+  const { executeRecaptcha } = useGoogleReCaptcha();
+
+  const getTokens = useCallback(async () => {
+    if (!executeRecaptcha) return;
+
+    try {
+      const token1 = await executeRecaptcha("action1");
+      const token2 = await executeRecaptcha("action2");
+      const token3 = await executeRecaptcha("action3");
+
+      // console.log("Token 1:", token1);
+      // console.log("Token 2:", token2);
+      // console.log("Token 3:", token3);
+      onTokensGenerated(token1, token2, token3);
+    } catch (error) {
+      console.error("Error executing recaptcha", error);
+    }
+  }, [executeRecaptcha]);
+
+  useEffect(() => {
+    getTokens();
+  }, [refreshTokens]);
+
+  useEffect(() => {
+    getTokens();
+  }, [getTokens]);
+
+  return <div className="hidden"></div>;
+};

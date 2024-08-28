@@ -32,6 +32,7 @@ export class Uploader {
     this.onAbortFn = () => {};
     this.abort = this.abort.bind(this);
     this.baseURL = options.baseURL;
+    this.recaptchaTokens = options.recaptchaTokens;
   }
 
   start() {
@@ -47,6 +48,7 @@ export class Uploader {
       // initializing the multipart request
       const requestBody = {
         fileName: fileName,
+        recaptchaToken: this.recaptchaTokens.token1,
       };
       const initializeReponse = await api.request({
         url: "/upload/start",
@@ -67,6 +69,7 @@ export class Uploader {
         fileName: this.fileName,
         uploadId: this.uploadId,
         parts: numberOfparts,
+        recaptchaToken: this.recaptchaTokens.token2,
       };
 
       const urlsResponse = await api.request({
@@ -140,7 +143,7 @@ export class Uploader {
   }
 
   async complete(error) {
-    if (error || !this.aborted) {
+    if (error || this.aborted) {
       this.onErrorFn(error);
       return;
     }
@@ -158,6 +161,7 @@ export class Uploader {
         fileName: this.fileName,
         uploadId: this.uploadId,
         parts: this.uploadedParts,
+        recaptchaToken: this.recaptchaTokens.token3,
       };
 
       try {
