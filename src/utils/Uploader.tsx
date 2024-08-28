@@ -30,6 +30,7 @@ export class Uploader {
     this.onErrorFn = () => {};
     this.onCompleteFn = () => {};
     this.onAbortFn = () => {};
+    this.onUploadFn = () => {};
     this.abort = this.abort.bind(this);
     this.baseURL = options.baseURL;
     this.recaptchaTokens = options.recaptchaTokens;
@@ -99,6 +100,7 @@ export class Uploader {
 
     if (!this.parts.length) {
       if (!activeConnections) {
+        // console.log("All parts uploaded");
         this.complete();
       }
 
@@ -147,21 +149,23 @@ export class Uploader {
       this.onErrorFn(error);
       return;
     }
+    this.onUploadFn();
+    // try {
+    //   await this.sendCompleteRequest();
+    // } catch (error) {
+    //   this.onErrorFn(error);
+    // }
 
-    try {
-      await this.sendCompleteRequest();
-    } catch (error) {
-      this.onErrorFn(error);
-    }
+    //TODO: Ejecutar crear listener para ejecutar la función sendCompleteRequest fuera del uploader
   }
 
-  async sendCompleteRequest() {
+  async sendCompleteRequest(refreshToken) {
     if (this.fileName && this.uploadId) {
       const requestBody = {
         fileName: this.fileName,
         uploadId: this.uploadId,
         parts: this.uploadedParts,
-        recaptchaToken: this.recaptchaTokens.token3,
+        recaptchaToken: refreshToken,
       };
 
       try {
@@ -312,6 +316,11 @@ export class Uploader {
 
   onAbort(onAbort) {
     this.onAbortFn = onAbort;
+    return this;
+  }
+
+  onUpload(onUpload) {
+    this.onUploadFn = onUpload;
     return this;
   }
 
