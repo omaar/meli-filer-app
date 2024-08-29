@@ -2,6 +2,7 @@ import React, { useRef, useState, useCallback, useEffect } from "react";
 import { Button } from "@nextui-org/button";
 import { Progress } from "@nextui-org/progress";
 import { Snippet } from "@nextui-org/snippet";
+import { Link } from "@nextui-org/link";
 import { button as buttonStyles } from "@nextui-org/theme";
 import formatBytes from "@/utils/formatBytes";
 import { Uploader } from "@/utils/Uploader";
@@ -30,6 +31,7 @@ const MyUploader = () => {
   const [selectedFile, setSelectedFile] = useState(null);
   const [progress, setProgress] = useState(0);
   const [isUploading, setIsUploading] = useState(false);
+  const [publicUrl, setPublicUrl] = useState(null);
 
   const handleUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     e.preventDefault();
@@ -53,6 +55,9 @@ const MyUploader = () => {
       } catch (error) {
         console.error("Error getting tokens", error);
       }
+    } else if (publicUrl) {
+      window.open(publicUrl);
+      setPublicUrl(null);
     } else {
       uploadRef.current.click();
     }
@@ -91,6 +96,7 @@ const MyUploader = () => {
         })
         .onComplete(({ data }) => {
           console.log(data.location);
+          setPublicUrl(data.location);
           setSelectedFile(null);
           setProgress(0);
           setIsUploading(false);
@@ -99,9 +105,11 @@ const MyUploader = () => {
           console.error(error);
           setProgress(0);
           setIsUploading(false);
+          setPublicUrl(null);
         });
       uploader.start();
       setIsUploading(true);
+      setPublicUrl(null);
     }
   };
 
@@ -138,6 +146,9 @@ const MyUploader = () => {
             ? `[${formatBytes(selectedFile.size)}] ${selectedFile.name}  `
             : "Haz click aqui para "}
           <Button
+            href={publicUrl ? publicUrl : ""}
+            showAnchorIcon={publicUrl ? true : false}
+            as={publicUrl ? Link : Button}
             onClick={handleButtonClick}
             className={buttonStyles({
               color: "primary",
@@ -146,7 +157,11 @@ const MyUploader = () => {
             })}
             color="primary"
           >
-            {selectedFile ? `Subir archivo` : "elegir archivo"}
+            {selectedFile
+              ? `Subir archivo`
+              : publicUrl
+                ? "Ver archivo"
+                : "elegir archivo"}
           </Button>
           {selectedFile && (
             <Button
