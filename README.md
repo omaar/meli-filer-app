@@ -1,27 +1,61 @@
-# Frontend app meli-filer app
+# meli-filer-app
 
-This is a web app that works with meli-filer backend [https://github.com/omaar/meli-filer.git](https://github.com/omaar/meli-filer.git).
+## Cómo usar
 
-[Try it on CodeSandbox](https://)
+### Desarrollo
 
-## How to Use
+1. Crea una copia del archivo `.env.example`:
 
-To clone the project, run the following command:
+   ```bash
+   cp .env.example .env.dev
+   ```
 
-```bash
-git clone [https://github.com/omaar/meli-filer-app.git](https://github.com/omaar/meli-filer-app.git)
-```
+2. Configura las variables de entorno en `.env.dev`:
 
-### Install dependencies
+   ```plaintext
+   VITE_PORT=
+   VITE_API_URL=
+   VITE_RECAPTCHA_SITE_KEY=
+   ```
 
-You can use one of them `npm` Example using `npm`:
+3. Ejecuta el entorno de desarrollo. El proyecto utiliza el paquete `dotenv` para cargar las variables desde el archivo `.env.dev`:
 
-```bash
-npm install
-```
+   ```bash
+   npm run dev
+   ```
 
-### Run the development server
+### Producción
 
-```bash
-npm run dev
-```
+1. Crea una copia del archivo `.env.example`:
+
+   ```bash
+   cp .env.example .env.production
+   ```
+
+   ⚠️ **Nota**: Los valores dentro del archivo `.env.production` deben ir sin dobles comillas `""`.
+
+   Ejemplo:
+
+   ```plaintext
+   VITE_RECAPTCHA_SITE_KEY=a221bfgf
+   ```
+
+2. Compila la imagen de Docker:
+
+   ```bash
+   npm run build-docker
+   ```
+
+3. Ejecuta el contenedor de Docker:
+
+   - Comando por defecto:
+
+     ```bash
+     npm run docker
+     ```
+
+   - Comando personalizado:
+
+     ```bash
+     docker run -d -p [HTTP_PORT]:80 --name meli-filer-app iomaar/meli-filer-app
+     ```
