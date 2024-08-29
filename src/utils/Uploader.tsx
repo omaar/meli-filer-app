@@ -31,6 +31,7 @@ export class Uploader {
     this.onCompleteFn = () => {};
     this.onAbortFn = () => {};
     this.onUploadFn = () => {};
+    this.onSendFn = () => {};
     this.abort = this.abort.bind(this);
     this.baseURL = options.baseURL;
     this.recaptchaTokens = options.recaptchaTokens;

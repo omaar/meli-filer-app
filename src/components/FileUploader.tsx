@@ -29,10 +29,10 @@ const MyUploader = () => {
   const uploaderRef = useRef(null);
   const [selectedFile, setSelectedFile] = useState(null);
   const [progress, setProgress] = useState(0);
-
-  const [tokens, setTokens] = useState({ token1: "", token2: "", token3: "" });
+  const [isUploading, setIsUploading] = useState(false);
 
   const handleUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    e.preventDefault();
     const files = e.target.files;
 
     if (files) {
@@ -93,12 +93,15 @@ const MyUploader = () => {
           console.log(data.location);
           setSelectedFile(null);
           setProgress(0);
+          setIsUploading(false);
         })
         .onError((error) => {
           console.error(error);
           setProgress(0);
+          setIsUploading(false);
         });
       uploader.start();
+      setIsUploading(true);
     }
   };
 
@@ -108,6 +111,7 @@ const MyUploader = () => {
     }
     setSelectedFile(null);
     setProgress(0);
+    setIsUploading(false);
   };
 
   const getToken = useCallback(
@@ -128,7 +132,7 @@ const MyUploader = () => {
 
   return (
     <Snippet hideCopyButton hideSymbol variant="bordered">
-      {progress <= 0 ? (
+      {!isUploading ? (
         <span className="space-x-2">
           {selectedFile
             ? `[${formatBytes(selectedFile.size)}] ${selectedFile.name}  `
